@@ -59,8 +59,9 @@ public class DemoServiceTest {
 
     @Test(expected = OptimisticLockException.class)
     public void versioning() {
-        Document document = demoService.addDocument("Тест версионности. Документ №1", 0);
+        Document document = demoService.addDocument("Тест версионности. Документ №1", 2);
 
+        document.setName("Документ измениллся первый раз");
         demoService.updateDocumentName(document);
 
         //ловим ошибку версионности. В документе версия другая чем в БД
@@ -87,6 +88,10 @@ public class DemoServiceTest {
         demoService.getDocumentByEntityGraph(document.getId(),"document-comments-entity-graph");
 
     }
+
+    //TODO демонстрация локов на уровне sql
+    //TODO блокировка оптимистечккой блокировкой в mybatis
+    //TODO показать пример прокси
 
 
 }
