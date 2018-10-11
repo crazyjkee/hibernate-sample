@@ -5,8 +5,10 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import javax.persistence.EntityGraph;
 import javax.persistence.EntityManager;
 import javax.persistence.LockModeType;
+import javax.persistence.PessimisticLockScope;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -31,6 +33,8 @@ public class DemoService {
         document.setComments(createComments(document, commentsCount));
 
         entityManager.persist(document);
+
+        entityManager.close();
 
         return document;
     }
@@ -57,6 +61,8 @@ public class DemoService {
                 .orElseThrow(() -> new RuntimeException("Документ не найден"));
 
         entityManager.remove(document);
+
+        entityManager.close();
     }
 
 
@@ -70,11 +76,13 @@ public class DemoService {
             comments.addAll(document.getComments());
         }
 
+        entityManager.close();
+
         return comments;
     }
 
     @Transactional
-    public void updateDocument(Document document) {
+    public void updateDocumentName(Document document) {
         Document mergedDocument = document;
 
         //если объект document находится в состоянии detached - то запрашиваем его из БД
@@ -82,6 +90,8 @@ public class DemoService {
             mergedDocument = entityManager.merge(document);
         }
         entityManager.persist(mergedDocument);
+
+        entityManager.close();
     }
 
     public boolean existsDocumentByName(String name) {
@@ -94,6 +104,22 @@ public class DemoService {
         Map<String, Object> properties = new HashMap<>();
         properties.put("javax.persistence.lock.timeout", 1000L);
 
-        return entityManager.find(Document.class, id, lockModeType, properties);
+        Document document = entityManager.find(Document.class, id, lockModeType, properties);
+
+        entityManager.close();
+        return document;
+    }
+
+    @Transactional(readOnly = true)
+    public Document getDocumentByEntityGraph(int documentId, String entityGraph) {
+        EntityGraph graph = entityManager.getEntityGraph(entityGraph);
+
+        Map<String, Object> properties = new HashMap<>();
+        properties.put("javax.persistence.fetchgraph", graph);
+
+        Document document = entityManager.find(Document.class, documentId, properties);
+        entityManager.close();
+
+        return document;
     }
 }

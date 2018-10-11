@@ -9,7 +9,8 @@ import java.io.Serializable;
 import java.util.List;
 
 @Entity
-@Table
+@NamedEntityGraph(name = "document-comments-entity-graph",
+        attributeNodes = @NamedAttributeNode("comments"))
 public class Document implements Serializable {
 
     @Id
@@ -19,7 +20,7 @@ public class Document implements Serializable {
     @Column(nullable = false, unique = true)
     private String name;
 
-    @OneToMany(cascade = CascadeType.ALL, mappedBy = "document")
+    @OneToMany(fetch = FetchType.LAZY, cascade = CascadeType.ALL, mappedBy = "document")
     @BatchSize(size = 3)
     private List<Comment> comments;
 
