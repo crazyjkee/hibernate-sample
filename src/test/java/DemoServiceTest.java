@@ -1,3 +1,4 @@
+import javax.persistence.LockModeType;
 import org.junit.Assert;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -67,7 +68,17 @@ public class DemoServiceTest {
         //ловим ошибку версионности. В документе версия другая чем в БД
         document.setName("Документ изменился второй раз");
         demoService.updateDocument(document);
+    }
 
+    @Test
+    public void pessimisticLock(){
+        Document document = demoService.addDocument("Тест пессимистической блокировки. Документ №1", 0);
+
+        //блокируем на чтенеие
+        for (LockModeType lockModeType : LockModeType.values()) {
+            demoService.getDocumentById(document.getId(), lockModeType);
+
+        }
     }
 
 

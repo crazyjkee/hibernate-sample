@@ -1,17 +1,18 @@
 package ru.redsys.sample.hibernate.service;
 
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import javax.persistence.EntityManager;
+import javax.persistence.LockModeType;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import ru.redsys.sample.hibernate.model.Comment;
 import ru.redsys.sample.hibernate.model.Document;
 import ru.redsys.sample.hibernate.repository.DocumentRepository;
-
-import javax.persistence.EntityManager;
-import javax.persistence.LockModeType;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
 
 @Service
 public class DemoService {
@@ -63,7 +64,8 @@ public class DemoService {
     public List<Comment> getAllDocumentsComments() {
         List<Comment> comments = new ArrayList();
 
-        List<Document> documents = entityManager.createQuery("select d from Document d", Document.class).getResultList();
+        List<Document> documents = entityManager.createQuery("select d from Document d", Document.class)
+                .getResultList();
         for (Document document : documents) {
             comments.addAll(document.getComments());
         }
@@ -84,5 +86,14 @@ public class DemoService {
 
     public boolean existsDocumentByName(String name) {
         return repository.existsByName(name);
+    }
+
+    //чтение документов с пессимистческой блокировкой с таймаутом
+    @Transactional
+    public Document getDocumentById(int id, LockModeType lockModeType) {
+        Map<String, Object> properties = new HashMap<>();
+        properties.put("javax.persistence.lock.timeout", 1000L);
+
+        return entityManager.find(Document.class, id, lockModeType, properties);
     }
 }
