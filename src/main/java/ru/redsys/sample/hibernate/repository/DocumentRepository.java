@@ -10,4 +10,6 @@ import java.util.Optional;
 public interface DocumentRepository extends CrudRepository<Document, Integer> {
 
     boolean existsByName(String name);
+
+    Document findByName(String name);
 }

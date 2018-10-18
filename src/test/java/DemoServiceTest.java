@@ -67,7 +67,7 @@ public class DemoServiceTest {
         Document document = demoService.addDocument("Тест версионности. Документ №1", 2);
 
         LOG.warn("Версия документа {}", document.getVersion());
-        document.setName("Документ измениллся первый раз");
+        document.setName("Документ изменился первый раз");
         demoService.updateDocumentName(document);
 
 
@@ -136,7 +136,7 @@ public class DemoServiceTest {
     public void testFirstLevelCache() {
         Document document = demoService.addDocument("Тест кеша документа", 1);
 
-        //демонстрация persistence cache (read repeatable isolation)
+        //демонстрация persistence cache + read commited isolation = read repeatable isolation
         demoService.cache1Level(document.getId());
     }
 

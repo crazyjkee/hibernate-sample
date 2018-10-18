@@ -1,5 +1,13 @@
 package ru.redsys.sample.hibernate.service;
 
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import javax.persistence.EntityGraph;
+import javax.persistence.EntityManager;
+import javax.persistence.LockModeType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -8,16 +16,6 @@ import org.springframework.transaction.annotation.Transactional;
 import ru.redsys.sample.hibernate.model.Comment;
 import ru.redsys.sample.hibernate.model.Document;
 import ru.redsys.sample.hibernate.repository.DocumentRepository;
-
-import javax.persistence.EntityGraph;
-import javax.persistence.EntityManager;
-import javax.persistence.LockModeType;
-import javax.persistence.PessimisticLockScope;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
 
 @Service
 public class DemoService {
@@ -77,9 +75,12 @@ public class DemoService {
     public List<Comment> getAllDocumentsComments() {
         List<Comment> comments = new ArrayList();
 
-        List<Document> documents = entityManager.createQuery("select d from Document d", Document.class)
-                .getResultList();
+        List<Document> documents =
+                entityManager.createQuery("select d from Document d", Document.class).getResultList();
+
+        LOG.warn("Всего найдено {} документов", documents.size());
         for (Document document : documents) {
+            LOG.warn("Получаем комментарии документа №{}", document.getId());
             comments.addAll(document.getComments());
         }
 
@@ -90,12 +91,9 @@ public class DemoService {
 
     @Transactional
     public void updateDocumentName(Document document) {
-        Document mergedDocument = document;
+        //тут поймаем optimistic lock exception если в БД версия документа изменилась
+        Document mergedDocument = entityManager.merge(document);
 
-        //если объект document находится в состоянии detached - то запрашиваем его из БД
-        if (!entityManager.contains(document)) {
-            mergedDocument = entityManager.merge(document);
-        }
         entityManager.persist(mergedDocument);
 
         entityManager.close();
@@ -106,13 +104,13 @@ public class DemoService {
     }
 
     //чтение документов с пессимистческой блокировкой с таймаутом
-    @Transactional //(timeout = 5) //время работы транзакции не более 5 секунд
+    @Transactional(timeout = 5) //время работы транзакции не более 5 секунд
     public Document getDocumentById(int id, LockModeType lockModeType, int sleepInSeconds) throws Exception {
         Map<String, Object> properties = new HashMap<>();
+
         //если значение 0 - то пытаемся получить блокировку сразу(если не получится, будет ошибка)
         //Для Oracle можно задавать значение > 0, которое укажет время ожидание получения блокировки
-
-//        properties.put("javax.persistence.lock.timeout", 0);
+        properties.put("javax.persistence.lock.timeout", 0);
 
         LOG.warn("Получаем документ с номером {}", id);
         Document document = entityManager.find(Document.class,
@@ -161,7 +159,7 @@ public class DemoService {
         LOG.warn("Получаем все комментарии");
 
         //Получаем комментарии из бд
-        document.getComments().toString();
+        document.getComments().get(0).getContent();
 
         LOG.warn("Добавляем новый комментарий");
 
@@ -184,7 +182,7 @@ public class DemoService {
         LOG.warn("Название документа второй версии - {}", document2.getName());
         document2.setName("Кеш документа версия 3");
 
-        entityManager.persist(document2); //не вызовется
+        entityManager.persist(document2); // не сработает
 
 
         Document document3 = entityManager.find(Document.class, documentId);
@@ -196,10 +194,9 @@ public class DemoService {
         //берем из другого сервиса документ по его номеру
         Document documentFromAnotherService = demo2Service.getDocumentById(documentId);
 
-        //проверяем, что entityManager возвращает тот же документ из памяти не обращаясь к бд. Транзитивность
         LOG.warn("Кеш работает: " +
                 (document1 == document2
                         && document2 == document3
-                        && documentFromAnotherService == document3));
+                        && document3 == documentFromAnotherService));
     }
 }
